@@ -3,3 +3,4 @@ _pycache__/
 *.pyc
 .vscode/
 cache/
+backend/.env
