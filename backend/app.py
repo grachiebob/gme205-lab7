@@ -87,7 +87,7 @@ def get_parcels():
                 ASS_ACTUAL, 
                 ASS_CLASSI, 
                 ST_AsGeoJSON(ST_Force2D(geom)) AS geometry 
-            FROM parcel; 
+            FROM parcels; 
         """ 
 
         cursor.execute(query) 
@@ -109,7 +109,7 @@ def get_parcels():
    
         geojson = { 
             "type": "FeatureCollection", 
-            "name": "parcel", 
+            "name": "parcels", 
             "features": features 
         } 
 
@@ -127,3 +127,71 @@ def get_parcels():
 
         if connection: 
             connection.close()
+
+@app.route("/api/roads") 
+@app.route("/api/roads.geojson") 
+def get_roads(): 
+    """ 
+    Retrieve road records from PostGIS and return them as GeoJSON. 
+
+    ST_Force2D is used to remove Z values. 
+    The column "road condi" must be quoted because it contains a space. 
+    """
+
+    connection = None 
+    cursor = None 
+
+    try: 
+        connection = get_connection() 
+        cursor = connection.cursor() 
+    
+        query = """ 
+            SELECT 
+                R_CLASS, 
+                S_Type, 
+                "road condi", 
+                ST_AsGeoJSON(ST_Force2D(geom)) AS geometry 
+            FROM roads; 
+        """ 
+
+        cursor.execute(query) 
+        rows = cursor.fetchall() 
+
+        features = [] 
+        
+        for row in rows: 
+            feature = { 
+                "type": "Feature",
+                "properties": { 
+                    "R_CLASS": row[0], 
+                    "S_Type": row[1], 
+                    "ROAD_CONDI": row[2] 
+                }, 
+                "geometry": json.loads(row[3]) 
+            } 
+
+            features.append(feature) 
+
+        geojson = { 
+            "type": "FeatureCollection", 
+            "name": "roads", 
+            "features": features 
+        } 
+
+        return geojson_response(geojson) 
+    
+    except Exception as error: 
+        return jsonify({ 
+            "error": "Failed to load road data.", 
+            "details": str(error) 
+        }), 500 
+
+    finally: 
+        if cursor: 
+            cursor.close() 
+
+        if connection: 
+            connection.close() 
+
+if __name__ == "__main__": 
+    app.run(debug=True) 
